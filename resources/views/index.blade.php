@@ -8,7 +8,6 @@
     <title>Meu Google Drive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         [x-cloak] {
             display: none !important;
@@ -58,7 +57,19 @@
     </script>
 </head>
 
-<body class="bg-dark-bg text-gray-200 min-h-screen font-sans antialiased" x-data="driveApp()">
+<body class="bg-dark-bg text-gray-200 min-h-screen font-sans antialiased" x-data="driveApp()" x-cloak>
+
+    <div x-show="isLoading" x-transition.opacity.duration.1000ms
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div class="flex flex-col items-center justify-center">
+            <div class="spinner w-12 h-12 border-4 border-gray-300 border-t-gdrive-blue rounded-full animate-spin">
+            </div>
+            <p class="mt-4 text-white text-sm">Carregando...</p>
+        </div>
+    </div>
+
+    @livewire('loading')
+
     <div class="container flex flex-col items-center justify-center mx-auto px-4 py-8">
         <!-- Header -->
         <header class="flex items-center justify-between w-full pb-6 border-b border-dark-border mb-8">
@@ -91,6 +102,15 @@
             <div class="bg-gdrive-red/15 border border-gdrive-red/30 text-white px-4 py-3 rounded relative mb-6"
                 role="alert">
                 <span class="block sm:inline">{{ session('error') }}</span>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="bg-gdrive-red/15 border border-gdrive-red/30 text-white px-4 py-3 rounded relative mb-6"
+                role="alert">
+                @foreach ($errors->all() as $error)
+                    <span class="block sm:inline">{{ $error }}</span>
+                @endforeach
             </div>
         @endif
 
@@ -331,14 +351,12 @@
                                 class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gray-200">
                                 <i class="fas fa-edit mr-3 w-5 text-center text-gray-400"></i>
                                 <span>Renomear</span>
-                                <span class="ml-auto text-xs text-gray-500">⌘E</span>
                             </button>
 
                             <button type="button" @click="showMoveForm(contextMenu.loopIndex)"
                                 class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gray-200">
                                 <i class="fas fa-folder-open mr-3 w-5 text-center text-gray-400"></i>
                                 <span>Mover para</span>
-                                <span class="ml-auto text-xs text-gray-500">⌘V</span>
                             </button>
 
                             <hr class="border-dark-border my-1">
@@ -351,7 +369,6 @@
                                     class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gdrive-red">
                                     <i class="fas fa-trash-alt mr-3 w-5 text-center"></i>
                                     <span>Mover para a lixeira</span>
-                                    <span class="ml-auto text-xs text-gray-500">Delete</span>
                                 </button>
                             </form>
                         </div>
@@ -372,14 +389,12 @@
                                 class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gray-200">
                                 <i class="fas fa-edit mr-3 w-5 text-center text-gray-400"></i>
                                 <span>Renomear</span>
-                                <span class="ml-auto text-xs text-gray-500">⌘E</span>
                             </button>
 
                             <button type="button" @click="showMoveFolderForm()"
                                 class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gray-200">
                                 <i class="fas fa-folder-open mr-3 w-5 text-center text-gray-400"></i>
                                 <span>Mover para</span>
-                                <span class="ml-auto text-xs text-gray-500">⌘V</span>
                             </button>
 
                             <hr class="border-dark-border my-1">
@@ -392,7 +407,6 @@
                                     class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gdrive-red">
                                     <i class="fas fa-trash-alt mr-3 w-5 text-center"></i>
                                     <span>Excluir pasta</span>
-                                    <span class="ml-auto text-xs text-gray-500">Delete</span>
                                 </button>
                             </form>
                         </div>

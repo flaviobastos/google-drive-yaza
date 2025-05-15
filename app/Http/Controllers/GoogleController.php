@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Yaza\LaravelGoogleDriveStorage\GoogleDriveAdapter;
 use ZipArchive;
@@ -28,12 +27,7 @@ class GoogleController extends Controller
         $disk = Storage::disk('google');
 
         // Pasta atual (raiz por padrão)
-        $currentFolder = $request->get('folder', '');
-
-        // Normaliza o currentFolder para garantir comportamento consistente
-        if ($currentFolder === '') {
-            $currentFolder = '/';
-        }
+        $currentFolder = $request->get('folder', '/');
 
         /** @var GoogleDriveAdapter $adapter */
         $adapter = $disk->getAdapter();
@@ -51,7 +45,7 @@ class GoogleController extends Controller
                 $itemData = [
                     'name' => $meta->path(),
                     'basename' => basename($meta->path()),
-                    'size' => $item->isFile() ? $meta->fileSize() : 0,
+                    'size' => $item->isFile() ? $meta->fileSize() : null,
                     'id' => $meta->extraMetadata()['id'] ?? null,
                     'last_modified' => $meta->lastModified(),
                 ];
@@ -82,12 +76,9 @@ class GoogleController extends Controller
      * @param string $currentFolder Pasta atual a ser excluída da lista (opcional)
      * @return array Lista de pastas disponíveis
      */
-    private function getAllFolders(FilesystemAdapter $disk, string $currentFolder = ''): array
+    private function getAllFolders(FilesystemAdapter $disk, string $currentFolder = '/'): array
     {
         $allFolders = [];
-
-        // Normaliza o currentFolder vazio ou '/' para identificar consistentemente a pasta raiz
-        $isRootFolder = $currentFolder === '' || $currentFolder === '/';
 
         try {
             $contents = $disk->listContents('', true);
@@ -110,8 +101,8 @@ class GoogleController extends Controller
         }
 
         // Adiciona a pasta raiz, exceto se estiver na pasta raiz
-        if (!$isRootFolder) {
-            array_unshift($allFolders, ['path' => '/', 'name' => 'Raiz']);
+        if (!in_array($currentFolder, ['', '/'])) {
+            array_unshift($allFolders, ['path' => '/', 'name' => 'Diretório Raiz']);
         }
 
         return $allFolders;
@@ -300,10 +291,16 @@ class GoogleController extends Controller
      */
     public function upload(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file|max:10240', // máximo de 10MB
-            'current_folder' => 'nullable|string',
-        ]);
+        $request->validate(
+            [
+                'file' => 'required|file|max:10240', // máximo de 10MB
+                'current_folder' => 'nullable|string',
+            ],
+            [
+                'file.max' => 'O arquivo não pode ser maior que :max KB.',
+                'file.required' => 'Você precisa enviar um arquivo.',
+            ]
+        );
 
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('google');
