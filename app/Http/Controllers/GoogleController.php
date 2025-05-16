@@ -149,6 +149,11 @@ class GoogleController extends Controller
             'new_name' => 'required|string',
         ]);
 
+        $newName = $request->get('new_name');
+        if (preg_match('/[\\/:*?<>|]/', $newName)) {
+            return back()->with('error', 'O nome do arquivo contém caracteres inválidos.');
+        }
+
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk('google');
 
@@ -162,16 +167,26 @@ class GoogleController extends Controller
                 $newName .= '.' . $oldExtension;
             }
 
+            // Cria o novo caminho completo do arquivo
             $newPath = dirname($oldPath) . '/' . $newName;
 
+            // Verifica se o arquivo original existe
             if (!$disk->exists($oldPath)) {
                 return back()->with('error', 'Arquivo original não encontrado.');
             }
 
+            // Verifica se o nome já não é o mesmo
+            if ($newName === basename($oldPath)) {
+                return back()->with('error', 'O novo nome não pode ser igual ao nome original.');
+            }
+
+            // Move o arquivo com o novo nome
             $disk->move($oldPath, $newPath);
 
+            // Retorna para a página anterior com mensagem de sucesso
             return back()->with('success', 'Arquivo renomeado com sucesso!');
         } catch (\Exception $e) {
+            // Retorna para a página anterior com mensagem de erro
             return back()->with('error', 'Erro ao renomear arquivo: ' . $e->getMessage());
         }
     }

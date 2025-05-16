@@ -59,12 +59,12 @@
 
 <body class="bg-dark-bg text-gray-200 min-h-screen font-sans antialiased" x-data="driveApp()" x-cloak>
 
-    <div x-show="isLoading" x-transition.opacity.duration.1000ms
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+    <div x-show="isLoading"
+        class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-[9999]">
         <div class="flex flex-col items-center justify-center">
             <div class="spinner w-12 h-12 border-4 border-gray-300 border-t-gdrive-blue rounded-full animate-spin">
             </div>
-            <p class="mt-4 text-white text-sm">Carregando...</p>
+            <p class="mt-4 text-white text-sm">Por favor, aguarde um momento...</p>
         </div>
     </div>
 
@@ -361,16 +361,11 @@
 
                             <hr class="border-dark-border my-1">
 
-                            <form :action="`/arquivos/excluir`" method="POST"
-                                onsubmit="return confirm('Tem certeza que deseja excluir este arquivo?');">
-                                @csrf
-                                <input type="hidden" name="file_path" :value="contextMenu.fileData.name">
-                                <button type="submit"
-                                    class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gdrive-red">
-                                    <i class="fas fa-trash-alt mr-3 w-5 text-center"></i>
-                                    <span>Mover para a lixeira</span>
-                                </button>
-                            </form>
+                            <button type="button" @click="showDeleteForm()"
+                                class="context-menu-item w-full text-left flex items-center px-4 py-2.5 text-sm text-gdrive-red">
+                                <i class="fas fa-trash-alt mr-3 w-5 text-center"></i>
+                                <span>Mover para a lixeira</span>
+                            </button>
                         </div>
                     </template>
 
@@ -557,9 +552,40 @@
         </div>
     </div>
 
+    <!-- Formulário de Excluir Arquivo (Hidden by default) -->
+    <div id="delete-file-modal" class="fixed inset-0 hidden z-50">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-dark-surface p-6 rounded-lg shadow-lg w-full max-w-md relative z-10">
+                <h3 class="text-lg font-medium mb-4">Excluir Arquivo</h3>
+                <form action="{{ url('/arquivos/excluir') }}" method="POST" class="flex flex-col space-y-4">
+                    @csrf
+                    <input type="hidden" name="file_path" id="delete_file_path">
+                    <div class="flex-grow">
+                        <p class="text-gray-300 mb-4">Tem certeza que deseja excluir este arquivo?</p>
+                        <p class="text-gray-400 text-md" id="file_to_delete_name"></p>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="submit"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-gdrive-red hover:bg-gdrive-red/90 transition ease-in-out duration-150">
+                            <i class="fas fa-trash-alt mr-2"></i>
+                            Excluir
+                        </button>
+                        <button type="button" @click="closeModal('delete-file-modal')"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-dark-surface hover:bg-dark-hover transition ease-in-out duration-150">
+                            <i class="fas fa-times mr-2"></i>
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         function driveApp() {
             return {
+                isLoading: true,
                 searchTerm: '',
                 contextMenu: {
                     visible: false,
@@ -573,18 +599,30 @@
                 init() {
                     // Fix for any floating buttons - ensure all modals are properly hidden on page load
                     const allModals = ['rename-folder-form', 'rename-file-modal', 'move-file-modal', 'move-folder-modal',
-                        'create-folder-modal'
+                        'create-folder-modal', 'delete-file-modal'
                     ];
                     allModals.forEach(id => {
                         document.getElementById(id).classList.add('hidden');
                     });
+
+                    // Intercepta envios de formulários para todas as requisições
+                    document.addEventListener('submit', (event) => {
+                        this.isLoading = true;
+                        const form = event.target;
+                        form.addEventListener('ajaxComplete', () => {
+                            this.isLoading = false;
+                        });
+                    });
+
+                    // Certifique-se de que isLoading seja falso após a inicialização
+                    this.isLoading = false;
                 },
 
                 // Funções de gerenciamento de modais
                 openModal(modalId) {
                     // Garante que todos os outros modais estejam fechados primeiro
                     const allModals = ['rename-folder-form', 'rename-file-modal', 'move-file-modal', 'move-folder-modal',
-                        'create-folder-modal'
+                        'create-folder-modal', 'delete-file-modal'
                     ];
                     allModals.forEach(id => {
                         if (id !== modalId) {
@@ -699,9 +737,7 @@
                     }
 
                     this.openModal('move-file-modal');
-                },
-
-                // Abre o formulário de mover pasta
+                }, // Abre o formulário de mover pasta
                 showMoveFolderForm() {
                     this.hideContextMenu();
                     const folderData = this.contextMenu.fileData;
@@ -734,6 +770,18 @@
                     }
 
                     this.openModal('move-folder-modal');
+                },
+
+                // Abre o formulário de exclusão
+                showDeleteForm() {
+                    this.hideContextMenu();
+                    const fileData = this.contextMenu.fileData;
+                    const filePath = fileData.name;
+
+                    document.getElementById('delete_file_path').value = filePath;
+                    document.getElementById('file_to_delete_name').textContent = fileData.basename;
+
+                    this.openModal('delete-file-modal');
                 },
 
                 // Verifica se o item (arquivo ou pasta) deve ser exibido com base no termo de pesquisa
